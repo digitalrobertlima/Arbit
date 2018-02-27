@@ -51,7 +51,7 @@ def list_orders(auth):
     return send_msg(msg, auth)
 
 
-def place_sell_order(fPrice, fQty, auth):
+def place_sell_order(quantity, limit, auth):
     """ Places a sell order """
     client_order_id = str(int(time.time()))  # this ID must be uniq
 
@@ -59,12 +59,12 @@ def place_sell_order(fPrice, fQty, auth):
     # 445       = 44500000000
     # 32900.05  = 3290005000000
     # 32900.005 = 3290000500000  # TODO: this on is tricky without bash's bc
-    #price = int(fPrice * 100000000)
-    price = value_to_satoshi(fPrice)
+    #price = int(limit * 100000000)
+    price = value_to_satoshi(limit)
 
     # Converts float quantity to satoshis
     # 0.00505000 = 505000
-    qty = value_to_satoshi(fQty)
+    qty = value_to_satoshi(quantity)
 
     msg = {
         "MsgType": "D",               # New Order Single message. Check for a full doc here: http://www.onixs.biz/fix-dictionary/4.4/msgType_D_68.html
@@ -76,18 +76,19 @@ def place_sell_order(fPrice, fQty, auth):
         "OrderQty": qty,              # Qty in saothis
         "BrokerID": 4                 # 1=SurBitcoin, 3=VBTC, 4=FoxBit, 5=Tests , 8=UrduBit, 9=ChileBit
     }
-    print(send_msg(msg))
+    print(send_msg(msg, auth))
+    return client_order_id
 
 
-def place_buy_order(fPrice, fQty, auth):
+def place_buy_order(quantity, limit, auth):
     """ Places a buy order """
     client_order_id = str(int(time.time()))  # this ID must be uniq
 
     # Converts float price to satoshi price
-    price = value_to_satoshi(fPrice)
+    price = value_to_satoshi(limit)
 
     # Converts float quantity to satoshis
-    qty = value_to_satoshi(fQty)
+    qty = value_to_satoshi(quantity)
 
     msg = {
         "MsgType": "D",               # New Order Single message. Check for a full doc here: http://www.onixs.biz/fix-dictionary/4.4/msgType_D_68.html
@@ -99,7 +100,17 @@ def place_buy_order(fPrice, fQty, auth):
         "OrderQty": qty,              # Qty in saothis
         "BrokerID": 4                 # 1=SurBitcoin, 3=VBTC, 4=FoxBit, 5=Tests , 8=UrduBit, 9=ChileBit
     }
-    print(send_msg(msg))
+    print(send_msg(msg, auth))
+    return client_order_id
+
+
+def cancel_order(client_order_id, auth):
+    """ Cancels the last order sent """
+    msg = {
+        "MsgType": "F",                  # Order Cancel Request message. Check for a full doc here: http://www.onixs.biz/fix-dictionary/4.4/msgType_F_70.html
+        "ClOrdID": client_order_id       # Unique identifier for Order as assigned by you
+    }
+    print(send_msg(msg, auth))
 
 
 def send_msg(msg, auth):
@@ -182,46 +193,6 @@ def send_msg(msg, auth):
 # #               ]
 # # }
 
-
-# # Cancel the order sent in the previous step
-# msg = {
-#     "MsgType":"F",                  # Order Cancel Request message. Check for a full doc here: http://www.onixs.biz/fix-dictionary/4.4/msgType_F_70.html
-#     "ClOrdID": client_order_id      # Unique identifier for Order as assigned by you
-# }
-# print send_msg(msg)
-# # The response of Cancel Order Request is almost identical to the New Order Single, but with different paramenters.
-# # {
-# #   "Status": 200,
-# #   "Description": "OK",
-# #   "Responses": [
-# #                   {
-# #                       "MsgType": "U3",            # Balance respose. Problably because the request also change your account balance.
-# #                       "5": {"USD_locked": 0},     # In this example, modified the amount of USD you have locked into your account.
-# #                       "ClientID": 90800003        # Your account ID
-# #                   },
-# #                   {
-# #                       "MsgType": "8",             # Execution Report. Check for a full fix doc here: http://www.onixs.biz/fix-dictionary/4.4/msgType_8_8.html
-# #                       "OrderID": 5669865,         # Unique identifier for Order as assigned by broker
-# #                       "ExecID": 36,               # Unique identifier of execution message as assigned by broker
-# #                       "ExecType": "4",            # 0=New, 1=Partially fill, 2=Fill, 4=Cancelled, 8=Rejected, A=Pending New
-# #                       "OrdStatus": "4",           # 0=New, 1=Partially fill, 2=Fill, 4=Cancelled, 8=Rejected, A=Pending New
-# #                       "LeavesQty": 0,             # Quantity open for further execution
-# #                       "Symbol": "BTCUSD",         # Pair
-# #                       "OrderQty": 2723810,        # Quantity ordered in satoshis
-# #                       "LastShares": 0,            # Quantity of shares bought/sold on this fill
-# #                       "LastPx": 0,                # Price of the last fill
-# #                       "CxlQty": 2723810,          # Total quantity canceled for this order.
-# #                       "TimeInForce": "1",         # 0=Day, 1=Good Till Cancel, 4=Fill or Kill
-# #                       "CumQty": 0,                # Total quantity filled
-# #                       "ClOrdID": "1440927610",    # Unique identifier for Order as assigned by you
-# #                       "OrdType": "2",             # 1=Market, 2=Limited, 3=Stop, 4=Stop Limit, G=Swap, P=Pegged
-# #                       "Side": "1",                # 1=Buy, 2=Sell, E=Redem, F=Lend, G=Borrow
-# #                       "Price": 26381000000,       # Price per unit of quantity in satoshis
-# #                       "ExecSide": "1",            # Side of this fill
-# #                       "AvgPx": 0                  # Calculated average price of all fills on this order.
-# #                   }
-# #               ]
-# #  }
 
 
 # # Generating a bitcoin deposit address
