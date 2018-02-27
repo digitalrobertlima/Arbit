@@ -72,7 +72,7 @@ def main():
             # Calculates the profit, if any (including fees)
             profit = round((((totalSPrice / totalBPrice) - 1) * 100), 2)
 
-            if (totalSPrice > totalBPrice) and (profit > 0.1):
+            if (totalSPrice > totalBPrice):
                 print('Arbitrage opportunity (' + str(profit) + '%) | ' + time.ctime())
                 print('Sell in ' + sExchange + ' at ' + str(sPrice['bid']) + '\t (you will receive ' + str(round(totalSPrice)) + ')')
                 print('Buy  in ' + bExchange + ' at ' + str(bPrice['ask']) + '\t (you will pay     ' + str(round(totalBPrice)) + ')\n')
