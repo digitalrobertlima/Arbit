@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from pprint import pprint
 import credentials
 import mbapi.tapi as mbt
 import foxapi.foxbit as fox
@@ -11,11 +12,15 @@ foxAuth = fox.Auth(id=credentials.FoxBit['key'],
                    secret=credentials.FoxBit['secret'])
 
 mbtTrade = mbt.Trade(mbtAuth)
-mbtOrder = mbtTrade.place_buy_order(quantity=0.001, limit=12000)
-print(mbtOrder.data)
+
+pprint(fox.get_account_info(foxAuth))
 
 
-foxOrder = fox.place_buy_order(limit=12000.002, quantity=0.001, auth=foxAuth)
+#mbtOrder = mbtTrade.place_buy_order(quantity=0.001, limit=12000)
+#print(mbtOrder.data)
+
+
+#foxOrder = fox.place_buy_order(limit=12000.002, quantity=0.001, auth=foxAuth)
 #fox.cancel_order(1459162516665, foxAuth)
 
 # Exemplo de ordem

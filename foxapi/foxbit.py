@@ -4,7 +4,7 @@ import hmac
 import time
 import requests
 import datetime
-import subprocess
+from decimal import Decimal
 
 
 class Auth():
@@ -30,10 +30,39 @@ class Auth():
 
 
 def value_to_satoshi(value):
-    cmd = "echo '" + str(value) + " * 100000000 / 1' | bc"
-    ps = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output = int(ps.communicate()[0])
-    return output
+    """ Converts floats to satoshis ints
+
+    Examples:
+    445        = 44500000000
+    32900.05   = 3290005000000
+    32900.005  = 3290000500000
+    0.00505000 = 505000
+    """
+    # Deprecated in favor of Decimal()
+    #cmd = "echo '" + str(value) + " * 100000000 / 1' | bc"
+    #ps = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    #output = int(ps.communicate()[0])
+    output = Decimal(str(value)) * Decimal(str(100000000))
+    return int(output)
+
+
+def satoshi_to_value(value):
+    """ Converts satoshi ints to floats values """
+    output = Decimal(str(value)) / Decimal(str(100000000))
+    return float(output)
+
+
+def get_account_info(auth):
+    msg = {
+        "MsgType": "U2",    # Balance Request
+        "BalanceReqID": 1   # An ID assigned by you. It can be any number.  The response message associated with this request will contain the same ID.
+    }
+    # Converts satoshi balances to floats:
+    output = send_msg(msg, auth)
+    for coin, balance in output['Responses'][0]['4'].items():
+        output['Responses'][0]['4'][coin] = satoshi_to_value(balance)
+
+    return(output)
 
 
 def list_orders(auth):
@@ -56,14 +85,8 @@ def place_sell_order(quantity, limit, auth):
     client_order_id = str(int(time.time()))  # this ID must be uniq
 
     # Converts float price to satoshi price
-    # 445       = 44500000000
-    # 32900.05  = 3290005000000
-    # 32900.005 = 3290000500000  # TODO: this on is tricky without bash's bc
-    #price = int(limit * 100000000)
     price = value_to_satoshi(limit)
-
     # Converts float quantity to satoshis
-    # 0.00505000 = 505000
     qty = value_to_satoshi(quantity)
 
     msg = {
