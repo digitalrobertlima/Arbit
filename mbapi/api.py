@@ -47,8 +47,6 @@ class Request():
         # Make the request
         response = requests.get(url, params=params)
 
-        print(url)
-
         # Decode response content
         data = response.content.decode('utf-8')
 
