@@ -3,10 +3,9 @@
 # Description: Does arbitrage between brazilian BTC exchanges
 
 
-# TODO-1: Fetch prices from each's exchange API instead of using BitValor
-#         Fetch fees data from each's exchanges API as well
-
-# TODO-2: use the balance for calculating the optimum quantity to trade:
+# TODO:
+# Fetch fees data from each's exchanges API as well
+# Use the balance for calculating the optimum quantity to trade:
 # if the profit is low, use a lower ammount
 # if the profit is huge, go all-in and use all the funds available.
 # Something like:
@@ -43,7 +42,7 @@ mbtTrade = mbt.Trade(mbtAuth)
 
 ## Global variables/configs
 # Set this to true to debug all functions and methods (no order will be sent)
-debugAll = True
+debugAll = False
 # Set the exchanges in which you want to trade (each one must have its API implemented)
 allowedExchanges = ['FOX', 'MBT']
 # Set this to the initial BTC ammount to sell
@@ -63,6 +62,8 @@ def do_taker_market_arbitrage(exchangeInWhichToSell,
     If debug is True, this will NOT send the orders, instead it will print how they'd be have sent.
     '''
 
+    global balances
+
     ## These are critical for calculating the orders
     # The fee percentage for selling
     sFee = feesData[exchangeInWhichToSell]['fees']['trade_market'][0]
@@ -77,6 +78,18 @@ def do_taker_market_arbitrage(exchangeInWhichToSell,
     sellingTotalBRL = format(sellingBTCQuantity * (priceAtWhichToSell - (sFee * priceAtWhichToSell)), '.2f')
     # The calculated total fiat value that you will pay while buying
     buyingTotalBRL = format(buyingBTCQuantity * priceAtWhichToBuy, '.2f')
+
+    ## Checks if balances are enough
+    if balances[exchangeInWhichToSell]['BTC'] > sellingBTCQuantity:
+        print('Enough BTC on ' + exchangeInWhichToSell + ' to sell.')
+    else:
+        print('Not enough BTC on ' + exchangeInWhichToSell + ' to sell! You only have ' + str(balances[exchangeInWhichToSell]['BTC']) + ' BTC available. Skipping this trade...')
+        return False
+    if balances[exchangeInWhichToBuy]['BRL'] > float(buyingTotalBRL):
+        print('Enough BRL on ' + exchangeInWhichToBuy + ' to buy.')
+    else:
+        print('Not enough BRL on ' + exchangeInWhichToBuy + ' to buy! You only have ' + str(balances[exchangeInWhichToBuy]['BRL']) + ' BRL available. Skipping this trade...')
+        return False
 
     ## Places the selling order
     print('Placing ' + format(sellingBTCQuantity, '.8f') + ' BTC sell order in ' + exchangeInWhichToSell + '... (' + sellingTotalBRL + ' BRL)')
@@ -106,6 +119,8 @@ def do_taker_market_arbitrage(exchangeInWhichToSell,
         else:
             fox.place_buy_order(quantity=buyingBTCQuantity, limit=priceAtWhichToBuy, auth=foxAuth)
 
+    return True
+
 
 def fetch_balances(debug=False):
     '''
@@ -114,7 +129,7 @@ def fetch_balances(debug=False):
     '''
 
     if debug is True:
-        return {'FOX': {'BRL': 300.00774918, 'BTC': 0.00887171}, 'MBT': {'BRL': 244.65601, 'BTC': 0.01129132}}
+        return {'FOX': {'BRL': 15.00774918, 'BTC': 0.00887171}, 'MBT': {'BRL': 244.65601, 'BTC': 0.01129132}}
 
     # Prefills the dict
     returnValue = {e: {'BRL': 0, 'BTC': 0} for e in allowedExchanges}
@@ -148,14 +163,21 @@ def fetch_orderbooks(debug=False):
     # Prefills the dict
     returnValue = {e: {'bid': 0, 'ask': 0} for e in allowedExchanges}
 
+    # TODO: ROBUSTNESS HERE PLEASE
     for exchange in allowedExchanges:
         if exchange == "MBT":
             response = requests.get('https://www.mercadobitcoin.net/api/BTC/orderbook/')
+            if response.status_code != requests.codes.ok:
+                print("[ERROR] Something happened while fetching MBT orderbook. Shutting down!")
+                sys.exit()
             rJSON = response.json()
             returnValue['MBT']['bid'] = rJSON['bids'][0][0]
             returnValue['MBT']['ask'] = rJSON['asks'][0][0]
         elif exchange == "FOX":
             response = requests.get('https://api.blinktrade.com/api/v1/BRL/orderbook?crypto_currency=BTC')
+            if response.status_code != requests.codes.ok:
+                print("[ERROR] Something happened while fetching FOX orderbook. Shutting down!")
+                sys.exit()
             rJSON = response.json()
             returnValue['FOX']['bid'] = rJSON['bids'][0][0]
             returnValue['FOX']['ask'] = rJSON['asks'][0][0]
@@ -193,7 +215,7 @@ def main(debug=False):
 
             # If the value you'll get for selling 1 BTC is higher to the value you'll pay for 1 BTC (value assumes the fees are embedded)
             # and if the profit is higher than 0.2%, then execute the order
-            if (totalSPrice > totalBPrice) and profit > 0:
+            if (totalSPrice > totalBPrice) and profit > 0.2:
                 print('Arbitrage opportunity (' + format(profit, '.2f') + '%) | ' + time.ctime())
                 print('Sell in ' + sExchange + ' at ' + format(sPrice['bid'], '.5f') + '  (-' + format(sFee * 100, '.2f') + '%: ' + format(totalSPrice, '.2f') + ')')
                 print('Buy  in ' + bExchange + ' at ' + format(bPrice['ask'], '.5f') + '  (+' + format(bFee * 100, '.2f') + '%: ' + format(totalBPrice, '.2f') + ')')
@@ -202,18 +224,18 @@ def main(debug=False):
                 os.system('paplay beep.wav')
 
                 # Does market arbitrage
-                # if sExchange == 'MBT':  # for now only do arbitrage if MBT has higher price
-                #                         # because i have no btc left in FOX
-                do_taker_market_arbitrage(exchangeInWhichToSell=sExchange,
-                                          exchangeInWhichToBuy=bExchange,
-                                          priceAtWhichToSell=sPrice['bid'],
-                                          priceAtWhichToBuy=bPrice['ask'],
-                                          debug=debug)
-                # Refresh balances
-                balances = fetch_balances(debug)
-                print("We're done for now, take a look to see if it worked! Balances below: \n")
-                pprint(balances)
-                #sys.exit()
+                TradeResult = do_taker_market_arbitrage(exchangeInWhichToSell=sExchange,
+                                                        exchangeInWhichToBuy=bExchange,
+                                                        priceAtWhichToSell=sPrice['bid'],
+                                                        priceAtWhichToBuy=bPrice['ask'],
+                                                        debug=debug)
+                if TradeResult is True:
+                    print("Orders were sucessfully sent! Refreshing balances in 5 seconds...\n")
+                    time.sleep(5)
+                    balances = fetch_balances(debug)
+                    pprint(balances)
+                else:
+                    print("You don't have the necessary funds for this trade :( Maybe next time?")
 
 
 ## The Loop
@@ -228,7 +250,7 @@ try:
 
     while True:
         main(debugAll)
-        time.sleep(60)
+        time.sleep(10)
 except KeyboardInterrupt:
     print('\rExiting...')
 
