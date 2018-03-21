@@ -98,7 +98,7 @@ def do_taker_market_arbitrage(exchangeInWhichToSell,
             print('mbtTrade.place_sell_order(quantity=' + str(sellingBTCQuantity) + ', limit=' + str(priceAtWhichToSell) + ')')
         else:
             mbtOrder = mbtTrade.place_sell_order(quantity=sellingBTCQuantity, limit=priceAtWhichToSell)
-            print(mbtOrder.data)
+            print('info -----------\n' + mbtOrder.data + '\n' + mbtOrder.error_msg + '\n' + mbtOrder.status_code)
     elif exchangeInWhichToSell == 'FOX':
         if debug is True:
             print('fox.place_sell_order(quantity=' + str(sellingBTCQuantity) + ', limit=' + str(priceAtWhichToSell) + ', auth=foxAuth)')
@@ -112,7 +112,7 @@ def do_taker_market_arbitrage(exchangeInWhichToSell,
             print('mbtOrder = mbtTrade.place_buy_order(quantity=' + str(buyingBTCQuantity) + ', limit=' + str(priceAtWhichToBuy) + ')')
         else:
             mbtOrder = mbtTrade.place_buy_order(quantity=buyingBTCQuantity, limit=priceAtWhichToBuy)
-            print(mbtOrder.data)
+            print('info -----------\n' + mbtOrder.data + '\n' + mbtOrder.error_msg + '\n' + mbtOrder.status_code)
     elif exchangeInWhichToBuy == 'FOX':
         if debug is True:
             print('fox.place_buy_order(quantity=' + str(buyingBTCQuantity) + ', limit=' + str(priceAtWhichToBuy) + ', auth=foxAuth)')
@@ -192,6 +192,7 @@ def fetch_orderbooks(debug=False):
 def main(debug=False):
     global balances
     exchanges = fetch_orderbooks(debug)
+    pprint(exchanges)
 
     # Loops through the exchange where you'll buy
     for bExchange, bPrice in exchanges.items():
@@ -215,7 +216,7 @@ def main(debug=False):
 
             # If the value you'll get for selling 1 BTC is higher to the value you'll pay for 1 BTC (value assumes the fees are embedded)
             # and if the profit is higher than 0.2%, then execute the order
-            if (totalSPrice > totalBPrice) and profit > 0.2:
+            if (totalSPrice > totalBPrice) and profit > 5:
                 print('Arbitrage opportunity (' + format(profit, '.2f') + '%) | ' + time.ctime())
                 print('Sell in ' + sExchange + ' at ' + format(sPrice['bid'], '.5f') + '  (-' + format(sFee * 100, '.2f') + '%: ' + format(totalSPrice, '.2f') + ')')
                 print('Buy  in ' + bExchange + ' at ' + format(bPrice['ask'], '.5f') + '  (+' + format(bFee * 100, '.2f') + '%: ' + format(totalBPrice, '.2f') + ')')
@@ -228,7 +229,7 @@ def main(debug=False):
                                                         exchangeInWhichToBuy=bExchange,
                                                         priceAtWhichToSell=sPrice['bid'],
                                                         priceAtWhichToBuy=bPrice['ask'],
-                                                        debug=debug)
+                                                        debug=True)
                 if TradeResult is True:
                     print("Orders were sucessfully sent! Refreshing balances in 5 seconds...\n")
                     time.sleep(5)
@@ -236,7 +237,7 @@ def main(debug=False):
                     pprint(balances)
                 else:
                     print("You don't have the necessary funds for this trade :( Maybe next time?")
-
+                sys.exit()
 
 ## The Loop
 try:
@@ -250,7 +251,7 @@ try:
 
     while True:
         main(debugAll)
-        time.sleep(10)
+        time.sleep(15)
 except KeyboardInterrupt:
     print('\rExiting...')
 
